@@ -12,6 +12,23 @@ export async function POST(request: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  // Rate limit logic
+  const { getUserRequestsToday, incrementUserRequests, isUserAdmin } =
+    await import("~/server/db/queries");
+  const userId = session.user?.id;
+  if (!userId) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  const isAdmin = await isUserAdmin(userId);
+  const MAX_REQUESTS_PER_DAY = 100;
+  if (!isAdmin) {
+    const todayCount = await getUserRequestsToday(userId, new Date());
+    if (todayCount >= MAX_REQUESTS_PER_DAY) {
+      return new Response("Too Many Requests", { status: 429 });
+    }
+    await incrementUserRequests(userId, new Date());
+  }
+
   const body = (await request.json()) as {
     messages: Array<Message>;
   };

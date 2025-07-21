@@ -37,6 +37,20 @@ export const users = createTable("user", {
   isAdmin: boolean("is_admin").notNull().default(false),
 });
 
+// Table to track user requests per day
+export const userRequests = createTable("user_requests", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 })
+    .notNull()
+    .references(() => users.id),
+  date: timestamp("date", { mode: "date", withTimezone: true }).notNull(),
+  count: integer("count").notNull().default(1),
+});
+
+export const userRequestsRelations = relations(userRequests, ({ one }) => ({
+  user: one(users, { fields: [userRequests.userId], references: [users.id] }),
+}));
+
 export const usersRelations = relations(users, ({ many }) => ({
   accounts: many(accounts),
 }));
