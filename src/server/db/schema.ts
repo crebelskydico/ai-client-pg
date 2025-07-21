@@ -47,6 +47,45 @@ export const userRequests = createTable("user_requests", {
   count: integer("count").notNull().default(1),
 });
 
+// Chat table
+export const chats = createTable("chat", {
+  id: varchar("id", { length: 255 }).notNull().primaryKey(),
+  userId: varchar("user_id", { length: 255 })
+    .notNull()
+    .references(() => users.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Message table
+export const messages = createTable("message", {
+  id: serial("id").primaryKey(),
+  chatId: varchar("chat_id", { length: 255 })
+    .notNull()
+    .references(() => chats.id),
+  role: varchar("role", { length: 32 }).notNull(),
+  parts: json("parts").notNull(),
+  order: integer("order").notNull(),
+  createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Relations
+export const chatsRelations = relations(chats, ({ one, many }) => ({
+  user: one(users, { fields: [chats.userId], references: [users.id] }),
+  messages: many(messages),
+}));
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  chat: one(chats, { fields: [messages.chatId], references: [chats.id] }),
+}));
+
 export const userRequestsRelations = relations(userRequests, ({ one }) => ({
   user: one(users, { fields: [userRequests.userId], references: [users.id] }),
 }));
@@ -140,4 +179,8 @@ export declare namespace DB {
   export type NewVerificationToken = InferInsertModel<
     typeof verificationTokens
   >;
+  export type Chat = InferSelectModel<typeof chats>;
+  export type NewChat = InferInsertModel<typeof chats>;
+  export type Message = InferSelectModel<typeof messages>;
+  export type NewMessage = InferInsertModel<typeof messages>;
 }
