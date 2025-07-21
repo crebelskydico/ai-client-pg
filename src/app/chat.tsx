@@ -3,15 +3,50 @@ import React from "react";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
 import { useChat } from "@ai-sdk/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { isNewChatCreated } from "../utils/is-new-chat-created";
 import { Loader2 } from "lucide-react";
+import { StickToBottom } from "use-stick-to-bottom";
 
-interface ChatProps {
+import type { Message } from "ai";
+
+export interface ChatProps {
   userName: string;
+  chatId: string;
+  isNewChat: boolean;
+  initialMessages?: Message[];
 }
 
-export const ChatPage = ({ userName }: ChatProps) => {
-  const { messages, input, handleInputChange, handleSubmit, status, setInput } =
-    useChat();
+export const ChatPage = ({
+  userName,
+  chatId,
+  isNewChat,
+  initialMessages,
+}: ChatProps) => {
+  const router = useRouter();
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    status,
+    setInput,
+    data,
+  } = useChat({
+    body: {
+      chatId,
+      isNewChat,
+    },
+    initialMessages,
+  });
+
+  useEffect(() => {
+    const lastDataItem = data?.[data.length - 1];
+    if (isNewChatCreated(lastDataItem)) {
+      router.push(`?id=${lastDataItem.chatId}`);
+    }
+  }, [data, router]);
   const [showSignIn, setShowSignIn] = React.useState(false);
   // Assume userName === "Guest" means not authenticated
   const isAuthenticated = userName !== "Guest";
@@ -30,20 +65,24 @@ export const ChatPage = ({ userName }: ChatProps) => {
   return (
     <>
       <div className="flex flex-1 flex-col">
-        <div
-          className="mx-auto w-full max-w-[65ch] flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-500"
+        <StickToBottom
+          className="relative mx-auto w-full max-w-[65ch] flex-1 overflow-auto p-4 [&>div]:scrollbar-thin [&>div]:scrollbar-track-gray-800 [&>div]:scrollbar-thumb-gray-600 hover:[&>div]:scrollbar-thumb-gray-500"
+          resize="smooth"
+          initial="smooth"
           role="log"
           aria-label="Chat messages"
         >
-          {messages.map((message, index) => (
-            <ChatMessage
-              key={index}
-              message={message}
-              role={message.role}
-              userName={userName}
-            />
-          ))}
-        </div>
+          <StickToBottom.Content className="flex flex-col">
+            {messages.map((message, index) => (
+              <ChatMessage
+                key={index}
+                message={message}
+                role={message.role}
+                userName={userName}
+              />
+            ))}
+          </StickToBottom.Content>
+        </StickToBottom>
 
         <div className="border-t border-gray-700">
           <form onSubmit={onHandleSubmit} className="mx-auto max-w-[65ch] p-4">

@@ -39,10 +39,11 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as {
     messages: Array<Message>;
-    chatId?: string;
+    chatId: string;
+    isNewChat: boolean;
   };
 
-  let { messages, chatId } = body;
+  let { messages, chatId, isNewChat } = body;
   let createdChatId = chatId;
 
   // Use first user message as title (or fallback)
@@ -50,11 +51,8 @@ export async function POST(request: Request) {
   const title =
     firstUserMsg(messages)?.content?.toString().slice(0, 50) || "New Chat";
 
-  // If no chatId, create a new chat before streaming
-  if (!chatId) {
-    // Use crypto.randomUUID for new chat id
-    createdChatId = crypto.randomUUID();
-
+  // If this is a new chat, save it before streaming
+  if (isNewChat) {
     await upsertChat({
       userId,
       chatId: createdChatId,
@@ -67,6 +65,14 @@ export async function POST(request: Request) {
     execute: async (dataStream) => {
       const { z } = await import("zod");
       const { searchSerper } = await import("~/serper");
+
+      // If a new chat was just created, notify the frontend
+      if (isNewChat) {
+        dataStream.writeData({
+          type: "NEW_CHAT_CREATED",
+          chatId: createdChatId,
+        });
+      }
 
       const result = streamText({
         model,
@@ -103,7 +109,7 @@ export async function POST(request: Request) {
             "New Chat";
           await upsertChat({
             userId,
-            chatId: createdChatId!,
+            chatId: createdChatId,
             title,
             messages: updatedMessages,
           });
