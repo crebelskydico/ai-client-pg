@@ -4,12 +4,14 @@ export declare namespace SerperTool {
   export type SearchInput = {
     q: string;
     num: number;
+    tbs?: string;
   };
 
   export interface SearchParameters {
     q: string;
     type: string;
     engine: string;
+    tbs?: string;
   }
 
   export interface KnowledgeGraph {
